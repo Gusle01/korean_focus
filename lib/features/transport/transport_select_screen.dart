@@ -32,7 +32,7 @@ class TransportSelectScreen extends ConsumerWidget {
                   ref
                       .read(journeySelectionProvider.notifier)
                       .selectTransport(t);
-                  context.go('/place/origin');
+                  context.push('/place/origin');
                 },
               ),
               const SizedBox(height: 12),

@@ -11,6 +11,8 @@ import '../complete/last_session_provider.dart';
 import '../journey/journey_selection_provider.dart';
 import 'focus_timer_provider.dart';
 import 'journey_map.dart';
+import 'map_style_provider.dart';
+import 'real_journey_map.dart';
 
 class FocusSessionScreen extends ConsumerStatefulWidget {
   const FocusSessionScreen({super.key});
@@ -123,6 +125,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
     final now = DateTime.now();
     final remaining = timer.remainingAt(now);
     final progress = timer.progressAt(now);
+    final useRealMap = ref.watch(useRealMapProvider);
 
     return PopScope(
       canPop: false,
@@ -135,6 +138,23 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
             child: Column(
               children: [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => ref
+                        .read(useRealMapProvider.notifier)
+                        .update((v) => !v),
+                    icon: Icon(
+                        useRealMap
+                            ? Icons.terrain_rounded
+                            : Icons.map_outlined,
+                        size: 18),
+                    label: Text(useRealMap ? '실제 지도' : '감성 지도'),
+                    style: TextButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary),
+                  ),
+                ),
+                const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -157,14 +177,21 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Expanded(
-                  child: JourneyMap(
-                    progress: progress,
-                    transport: sel.transport!,
-                    originName: sel.origin!.name,
-                    destName: sel.destination!.name,
-                  ),
+                  child: useRealMap
+                      ? RealJourneyMap(
+                          progress: progress,
+                          transport: sel.transport!,
+                          origin: sel.origin!,
+                          destination: sel.destination!,
+                        )
+                      : JourneyMap(
+                          progress: progress,
+                          transport: sel.transport!,
+                          originName: sel.origin!.name,
+                          destName: sel.destination!.name,
+                        ),
                 ),
                 const SizedBox(height: 24),
                 const Text('남은 집중 시간',

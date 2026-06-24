@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 실제 지도(OpenStreetMap) 타일 로드용 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="korean_focus"
         android:name="${applicationName}"

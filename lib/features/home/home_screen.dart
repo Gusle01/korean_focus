@@ -35,7 +35,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 24),
             _StartButton(onTap: () {
               ref.read(journeySelectionProvider.notifier).reset();
-              context.go('/transport');
+              context.push('/transport');
             }),
             const SizedBox(height: 32),
             Text(

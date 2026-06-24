@@ -28,10 +28,10 @@ class _PlaceSelectScreenState extends ConsumerState<PlaceSelectScreen> {
     final notifier = ref.read(journeySelectionProvider.notifier);
     if (_isOrigin) {
       notifier.selectOrigin(p);
-      context.go('/place/destination');
+      context.push('/place/destination');
     } else {
       notifier.selectDestination(p);
-      context.go('/confirm');
+      context.push('/confirm');
     }
   }
 
