@@ -6,6 +6,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/focus_session.dart';
+import '../../data/repositories/collection_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import '../complete/last_session_provider.dart';
 import '../journey/journey_selection_provider.dart';
@@ -63,7 +64,18 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
       completed: true,
     );
     await ref.read(sessionRepositoryProvider).save(session);
+    // 도착 보상: 도착 도시의 특산품/음식/전통/명소 중 하나를 진열장에 지급.
+    final awarded = await ref.read(collectionRepositoryProvider).awardForArrival(
+          sessionId: session.id,
+          destCity: sel.destination!.city,
+          originName: sel.origin!.name,
+          destName: sel.destination!.name,
+          transportIndex: sel.transport!.index,
+          durationSeconds: session.focusedSeconds,
+          acquiredAt: session.startedAt,
+        );
     ref.read(lastCompletedSessionProvider.notifier).state = session;
+    ref.read(lastAwardedCollectibleProvider.notifier).state = awarded;
     ref.read(focusTimerProvider.notifier).cancel();
     if (mounted) context.go('/complete');
   }
