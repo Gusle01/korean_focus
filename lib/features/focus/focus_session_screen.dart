@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../core/notifications/notification_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/focus_session.dart';
+import '../../data/models/transport_type.dart';
 import '../../data/repositories/collection_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import '../complete/last_session_provider.dart';
@@ -25,12 +27,54 @@ class FocusSessionScreen extends ConsumerStatefulWidget {
 class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
     with WidgetsBindingObserver {
   bool _handledFinish = false;
+  bool _notifStarted = false;
+  bool _lastPaused = false;
+  int _lastNotifiedRemaining = -1;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
+    _startNotification();
+  }
+
+  Future<void> _startNotification() async {
+    final timer = ref.read(focusTimerProvider);
+    final sel = ref.read(journeySelectionProvider);
+    if (timer == null || !sel.isComplete) return;
+    final now = DateTime.now();
+    await ref.read(notificationServiceProvider).start(
+          origin: sel.origin!.name,
+          dest: sel.destination!.name,
+          transportEmoji: sel.transport!.emoji,
+          remainingSeconds: timer.remainingAt(now).inSeconds,
+          progress: timer.progressAt(now),
+        );
+    _notifStarted = true;
+  }
+
+  /// 표시값이 의미있게 바뀔 때만(5초 단위 또는 정지/재개) 알림을 갱신.
+  void _maybeUpdateNotification(TimerState? t) {
+    if (!_notifStarted || t == null || t.finished) return;
+    final now = DateTime.now();
+    final remaining = t.remainingAt(now).inSeconds;
+    final paused = t.isPaused;
+    final pauseChanged = paused != _lastPaused;
+    final tick = remaining != _lastNotifiedRemaining &&
+        (remaining % 5 == 0 || remaining <= 5);
+    if (!pauseChanged && !tick) return;
+    _lastPaused = paused;
+    _lastNotifiedRemaining = remaining;
+    final sel = ref.read(journeySelectionProvider);
+    if (!sel.isComplete) return;
+    ref.read(notificationServiceProvider).update(
+          origin: sel.origin!.name,
+          dest: sel.destination!.name,
+          transportEmoji: sel.transport!.emoji,
+          remainingSeconds: remaining,
+          progress: t.progressAt(now),
+        );
   }
 
   @override
@@ -76,6 +120,10 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
         );
     ref.read(lastCompletedSessionProvider.notifier).state = session;
     ref.read(lastAwardedCollectibleProvider.notifier).state = awarded;
+    await ref.read(notificationServiceProvider).arrived(
+          dest: sel.destination!.name,
+          collectibleName: awarded?.name,
+        );
     ref.read(focusTimerProvider.notifier).cancel();
     if (mounted) context.go('/complete');
   }
@@ -116,13 +164,18 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
           ));
     }
     ref.read(focusTimerProvider.notifier).cancel();
+    await ref.read(notificationServiceProvider).cancel();
     if (mounted) context.go('/');
   }
 
   @override
   Widget build(BuildContext context) {
     ref.listen(focusTimerProvider, (prev, next) {
-      if (next != null && next.finished) _onFinished();
+      if (next != null && next.finished) {
+        _onFinished();
+      } else {
+        _maybeUpdateNotification(next);
+      }
     });
 
     final timer = ref.watch(focusTimerProvider);

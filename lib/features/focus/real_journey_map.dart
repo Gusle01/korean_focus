@@ -48,6 +48,12 @@ class _RealJourneyMapState extends State<RealJourneyMap> {
     _loadBoundaries();
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadBoundaries() async {
     final provinces = await KoreaBoundaries.provinces();
     final munis = await KoreaBoundaries.municipalities();

@@ -6,13 +6,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:korean_focus/app.dart';
 import 'package:korean_focus/data/models/focus_session.dart';
+import 'package:korean_focus/data/models/owned_collectible.dart';
 
 void main() {
   setUpAll(() async {
     final dir = Directory.systemTemp.createTempSync('korean_focus_test');
     Hive.init(dir.path);
     Hive.registerAdapter(FocusSessionAdapter());
+    Hive.registerAdapter(OwnedCollectibleAdapter());
     await Hive.openBox<FocusSession>('sessions');
+    await Hive.openBox<OwnedCollectible>('collectibles');
   });
 
   tearDownAll(() async {
