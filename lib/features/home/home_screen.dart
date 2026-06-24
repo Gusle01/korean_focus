@@ -7,6 +7,7 @@ import '../../core/utils/duration_format.dart';
 import '../../data/models/focus_session.dart';
 import '../../data/models/transport_type.dart';
 import '../../data/repositories/session_repository.dart';
+import '../journey/journey_selection_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -32,7 +33,10 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             _TodayCard(seconds: todaySeconds),
             const SizedBox(height: 24),
-            _StartButton(onTap: () => context.go('/transport')),
+            _StartButton(onTap: () {
+              ref.read(journeySelectionProvider.notifier).reset();
+              context.go('/transport');
+            }),
             const SizedBox(height: 32),
             Text(
               '최근 여정',
