@@ -1,7 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/complete/complete_screen.dart';
 import '../../features/confirm/journey_confirm_screen.dart';
+import '../../features/focus/focus_session_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/place/place_select_screen.dart';
 import '../../features/transport/transport_select_screen.dart';
@@ -25,6 +27,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/confirm',
       builder: (context, state) => const JourneyConfirmScreen(),
+    ),
+    GoRoute(
+      path: '/focus',
+      builder: (context, state) => const FocusSessionScreen(),
+    ),
+    GoRoute(
+      path: '/complete',
+      builder: (context, state) => const CompleteScreen(),
     ),
   ],
 );

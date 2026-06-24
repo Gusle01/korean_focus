@@ -31,7 +31,9 @@ class SessionRepository {
     return list;
   }
 
-  List<FocusSession> recent({int limit = 5}) => all().take(limit).toList();
+  /// 홈에 보여줄 "최근 완료한 여정".
+  List<FocusSession> recent({int limit = 5}) =>
+      all().where((s) => s.completed).take(limit).toList();
 
   int todaySeconds([DateTime? now]) =>
       todayFocusedSeconds(_box.values, now ?? DateTime.now());

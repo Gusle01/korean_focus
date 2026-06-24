@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/ui/transport_icon.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/transport_type.dart';
 import '../../data/static/route_durations.dart';
+import '../focus/focus_timer_provider.dart';
 import '../journey/journey_selection_provider.dart';
 
-class JourneyConfirmScreen extends ConsumerWidget {
+class JourneyConfirmScreen extends ConsumerStatefulWidget {
   const JourneyConfirmScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<JourneyConfirmScreen> createState() =>
+      _JourneyConfirmScreenState();
+}
+
+class _JourneyConfirmScreenState extends ConsumerState<JourneyConfirmScreen> {
+  int _selectedMinutes = 25;
+
+  @override
+  Widget build(BuildContext context) {
     final sel = ref.watch(journeySelectionProvider);
     if (!sel.isComplete) {
       return Scaffold(
@@ -21,6 +31,13 @@ class JourneyConfirmScreen extends ConsumerWidget {
       );
     }
     final route = buildRoute(sel.origin!, sel.destination!, sel.transport!);
+    final actual = route.durationMinutes;
+    final options = <(int, String)>[
+      (25, '25분'),
+      (50, '50분'),
+      (90, '90분'),
+      (actual, '실제 ${formatMinutesKo(actual)}'),
+    ];
 
     return Scaffold(
       appBar: AppBar(title: const Text('여정 확인')),
@@ -28,6 +45,7 @@ class JourneyConfirmScreen extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _TicketCard(
                 transportLabel: route.transport.label,
@@ -36,6 +54,25 @@ class JourneyConfirmScreen extends ConsumerWidget {
                 originName: route.origin.name,
                 destName: route.destination.name,
                 durationText: formatMinutesKo(route.durationMinutes),
+              ),
+              const SizedBox(height: 28),
+              const Text('집중 시간을 선택하세요',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final (m, label) in options)
+                    _DurationChip(
+                      label: label,
+                      selected: _selectedMinutes == m,
+                      onTap: () => setState(() => _selectedMinutes = m),
+                    ),
+                ],
               ),
               const Spacer(),
               SizedBox(
@@ -49,17 +86,57 @@ class JourneyConfirmScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(16)),
                   ),
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('집중 타이머는 Phase 3에서 구현됩니다')),
-                    );
+                    ref
+                        .read(focusTimerProvider.notifier)
+                        .start(Duration(minutes: _selectedMinutes));
+                    context.go('/focus');
                   },
                   child: const Text('집중 시작',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w500)),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DurationChip extends StatelessWidget {
+  const _DurationChip(
+      {required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.primary.withValues(alpha: 0.14)
+          : AppColors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: selected ? AppColors.primary : AppColors.line),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color:
+                  selected ? AppColors.primaryDark : AppColors.textSecondary,
+            ),
           ),
         ),
       ),
@@ -132,8 +209,8 @@ class _TicketCard extends StatelessWidget {
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8),
-                child:
-                    Icon(Icons.arrow_forward_rounded, color: AppColors.textTertiary),
+                child: Icon(Icons.arrow_forward_rounded,
+                    color: AppColors.textTertiary),
               ),
               Expanded(
                 child: _Endpoint(
