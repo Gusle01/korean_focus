@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/ui/transport_icon.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/focus_session.dart';
 import '../../data/repositories/session_repository.dart';
 import '../complete/last_session_provider.dart';
 import '../journey/journey_selection_provider.dart';
 import 'focus_timer_provider.dart';
+import 'journey_map.dart';
 
 class FocusSessionScreen extends ConsumerStatefulWidget {
   const FocusSessionScreen({super.key});
@@ -132,7 +132,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
       child: Scaffold(
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
             child: Column(
               children: [
                 Row(
@@ -157,10 +157,16 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 44),
-                _RouteProgress(
-                    progress: progress, icon: transportIcon(sel.transport!)),
-                const Spacer(),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: JourneyMap(
+                    progress: progress,
+                    transport: sel.transport!,
+                    originName: sel.origin!.name,
+                    destName: sel.destination!.name,
+                  ),
+                ),
+                const SizedBox(height: 24),
                 const Text('남은 집중 시간',
                     style:
                         TextStyle(fontSize: 13, color: AppColors.textTertiary)),
@@ -168,32 +174,39 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
                 Text(
                   formatClock(remaining.inSeconds),
                   style: const TextStyle(
-                    fontSize: 48,
+                    fontSize: 44,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                     fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(99),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 6,
+                          backgroundColor: AppColors.line,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 42,
+                      child: Text('${(progress * 100).round()}%',
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primaryDark,
+                              fontWeight: FontWeight.w500)),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 6,
-                    backgroundColor: AppColors.line,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('${(progress * 100).round()}%',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.primaryDark,
-                          fontWeight: FontWeight.w500)),
-                ),
-                const Spacer(),
                 Row(
                   children: [
                     Expanded(
@@ -239,61 +252,3 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
 
 const _stationStyle = TextStyle(
     fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary);
-
-/// 진행률에 따라 아이콘이 좌→우로 이동하는 단순 경로 (Phase 3b에서 곡선 지도로 교체).
-class _RouteProgress extends StatelessWidget {
-  const _RouteProgress({required this.progress, required this.icon});
-
-  final double progress;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, c) {
-        const iconSize = 40.0;
-        final travel = (c.maxWidth - iconSize).clamp(0.0, double.infinity);
-        final x = travel * progress;
-        return SizedBox(
-          height: 48,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                  left: iconSize / 2,
-                  right: iconSize / 2,
-                  top: 23,
-                  child: Container(height: 2, color: AppColors.line)),
-              Positioned(
-                  left: iconSize / 2 - 4, top: 19, child: _dot(filled: true)),
-              Positioned(
-                  right: iconSize / 2 - 4, top: 19, child: _dot(filled: false)),
-              Positioned(
-                left: x,
-                top: 4,
-                child: Container(
-                  width: iconSize,
-                  height: iconSize,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                      color: AppColors.primary, shape: BoxShape.circle),
-                  child: Icon(icon, color: Colors.white, size: 22),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _dot({required bool filled}) => Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: filled ? AppColors.primaryDark : AppColors.surface,
-          border: Border.all(color: AppColors.primaryDark, width: 2),
-        ),
-      );
-}
