@@ -8,9 +8,10 @@ import 'live_activity_bridge.dart';
 
 /// 집중 여정의 실시간 상태를 OS 알림으로 보여준다.
 ///
-/// - Android: 잠금화면/알림센터에 진행률이 표시되는 지속(ongoing) 알림.
-/// - iOS: 도착 알림(로컬 알림) + 진행 중 Live Activity(다이나믹 아일랜드/잠금화면).
-///   Live Activity 는 위젯 익스텐션이 설정돼 있을 때만 표시된다.
+/// 시간은 클라이언트가 스스로 카운트다운한다(앱이 초당 갱신하지 않음):
+/// - Android: ongoing 알림 + chronometer(카운트다운) → 백그라운드에도 매초 똑딱.
+/// - iOS: Live Activity(다이나믹 아일랜드/잠금화면)가 timerInterval 로 자동 갱신.
+/// 앱은 시작·일시정지·재개·도착 때만 호출한다.
 class NotificationService {
   NotificationService({
     FlutterLocalNotificationsPlugin? plugin,
@@ -43,82 +44,94 @@ class NotificationService {
       await _fln.initialize(
         const InitializationSettings(android: android, iOS: ios),
       );
-      // Android 13+ 알림 권한 요청.
       await _fln
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
           ?.requestNotificationsPermission();
       _initialized = true;
-    } catch (_) {
-      // 테스트/미지원 환경 등에서는 조용히 무시.
-    }
+    } catch (_) {}
   }
 
-  AndroidNotificationDetails _androidProgress(int percent) =>
-      AndroidNotificationDetails(
-        _channelId,
-        _channelName,
-        channelDescription: '집중 여정 진행 상황',
-        importance: Importance.low,
-        priority: Priority.low,
-        ongoing: true,
-        autoCancel: false,
-        onlyAlertOnce: true,
-        showProgress: true,
-        maxProgress: 100,
-        progress: percent.clamp(0, 100),
-        category: AndroidNotificationCategory.progress,
-      );
-
-  /// 여정 시작. 진행 알림/Live Activity 를 띄운다.
+  /// 여정 시작. 진행 알림/Live Activity 시작.
   Future<void> start({
     required String origin,
     required String dest,
     required String transportEmoji,
+    required int startMs,
+    required int endMs,
     required int remainingSeconds,
     required double progress,
   }) async {
     if (!_mobile) return;
     await init();
-    // Android: 진행률이 보이는 지속 알림. iOS: 반복 배너 대신 Live Activity 사용.
-    await _showAndroidProgress(origin, dest, transportEmoji, remainingSeconds,
-        progress);
+    await _showAndroidProgress(
+        origin, dest, transportEmoji, endMs, false, remainingSeconds, progress);
     final id = await _live.start(
       origin: origin,
       dest: dest,
       transportEmoji: transportEmoji,
+      startMs: startMs,
+      endMs: endMs,
+      paused: false,
       remainingSeconds: remainingSeconds,
       progress: progress,
     );
     _liveStarted = id != null;
   }
 
-  /// 진행 상황 갱신. (1초마다가 아니라 표시값이 바뀔 때만 호출하는 것을 권장)
+  /// 일시정지/재개 시 갱신. (running 이면 startMs/endMs 를 새로 계산해 넘긴다)
   Future<void> update({
     required String origin,
     required String dest,
     required String transportEmoji,
+    required int startMs,
+    required int endMs,
+    required bool paused,
     required int remainingSeconds,
     required double progress,
   }) async {
     if (!_mobile) return;
-    await _showAndroidProgress(origin, dest, transportEmoji, remainingSeconds,
-        progress);
+    await _showAndroidProgress(
+        origin, dest, transportEmoji, endMs, paused, remainingSeconds, progress);
     if (_liveStarted) {
-      await _live.update(remainingSeconds: remainingSeconds, progress: progress);
+      await _live.update(
+        startMs: startMs,
+        endMs: endMs,
+        paused: paused,
+        remainingSeconds: remainingSeconds,
+        progress: progress,
+      );
     }
   }
 
-  Future<void> _showAndroidProgress(String origin, String dest,
-      String transportEmoji, int remainingSeconds, double progress) async {
+  Future<void> _showAndroidProgress(String origin, String dest, String emoji,
+      int endMs, bool paused, int remainingSeconds, double progress) async {
     if (!Platform.isAndroid) return;
-    final percent = (progress * 100).round();
+    final percent = (progress * 100).round().clamp(0, 100);
+    final details = AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: '집중 여정 진행 상황',
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      onlyAlertOnce: true,
+      showProgress: true,
+      maxProgress: 100,
+      progress: percent,
+      category: AndroidNotificationCategory.progress,
+      // 진행 중이면 chronometer 로 매초 자동 카운트다운(앱 갱신 불필요).
+      when: paused ? null : endMs,
+      usesChronometer: !paused,
+      chronometerCountDown: true,
+    );
     try {
       await _fln.show(
         _progressId,
-        '$transportEmoji $origin → $dest',
-        '${_clock(remainingSeconds)} 남음',
-        NotificationDetails(android: _androidProgress(percent)),
+        '$emoji $origin → $dest',
+        paused ? '일시정지 · ${_clock(remainingSeconds)} 남음' : '집중 여정 진행 중',
+        NotificationDetails(android: details),
       );
     } catch (_) {}
   }
@@ -137,15 +150,15 @@ class NotificationService {
         collectibleName != null
             ? '집중 여정 완료 · "$collectibleName" 획득!'
             : '집중 여정 완료',
-        NotificationDetails(
-          android: const AndroidNotificationDetails(
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
             _channelId,
             _channelName,
             channelDescription: '집중 여정 진행 상황',
             importance: Importance.high,
             priority: Priority.high,
           ),
-          iOS: const DarwinNotificationDetails(),
+          iOS: DarwinNotificationDetails(),
         ),
       );
     } catch (_) {}

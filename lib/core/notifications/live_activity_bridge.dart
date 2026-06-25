@@ -4,10 +4,8 @@ import 'package:flutter/services.dart';
 
 /// iOS Live Activity / 다이나믹 아일랜드 제어용 네이티브 브릿지.
 ///
-/// 네이티브(Swift) 쪽 ActivityKit 구현과 MethodChannel 로 통신한다.
-/// Live Activity 위젯 익스텐션 타깃이 추가돼 있어야 실제로 표시되며
-/// (ios/LIVE_ACTIVITY_SETUP.md 참고), 미구현/구버전 iOS 에서는
-/// 호출이 조용히 무시되도록 모든 호출을 try/catch 로 감싼다.
+/// 위젯이 시작~종료 시각 구간으로 스스로 카운트다운하므로(timerInterval),
+/// 앱은 시작·일시정지·재개·종료 때만 호출한다. 미지원/구버전에서는 조용히 무시.
 class LiveActivityBridge {
   static const _channel = MethodChannel('korean_focus/live_activity');
 
@@ -18,31 +16,43 @@ class LiveActivityBridge {
     required String origin,
     required String dest,
     required String transportEmoji,
+    required int startMs,
+    required int endMs,
+    required bool paused,
     required int remainingSeconds,
     required double progress,
   }) async {
     if (!_supported) return null;
     try {
-      final id = await _channel.invokeMethod<String>('start', {
+      return await _channel.invokeMethod<String>('start', {
         'origin': origin,
         'dest': dest,
         'emoji': transportEmoji,
+        'startMs': startMs,
+        'endMs': endMs,
+        'paused': paused,
         'remaining': remainingSeconds,
         'progress': progress,
       });
-      return id;
     } catch (_) {
       return null;
     }
   }
 
+  /// 상태 변경(일시정지/재개) 시 갱신.
   Future<void> update({
+    required int startMs,
+    required int endMs,
+    required bool paused,
     required int remainingSeconds,
     required double progress,
   }) async {
     if (!_supported) return;
     try {
       await _channel.invokeMethod('update', {
+        'startMs': startMs,
+        'endMs': endMs,
+        'paused': paused,
         'remaining': remainingSeconds,
         'progress': progress,
       });

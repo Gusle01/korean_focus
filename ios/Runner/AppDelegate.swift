@@ -28,8 +28,8 @@ import ActivityKit
 }
 
 /// iOS 16.1+ Live Activity(다이나믹 아일랜드/잠금화면)를 ActivityKit 으로 제어.
-/// 실제 위젯 UI 는 FocusJourneyWidget 익스텐션 타깃에 있다
-/// (ios/LIVE_ACTIVITY_SETUP.md 참고). 위젯 타깃이 없으면 알림만 동작한다.
+/// 위젯이 시작~종료 시각 구간으로 스스로 카운트다운하므로(Text/ProgressView timerInterval),
+/// 앱은 시작·일시정지·재개·종료 때만 상태를 갱신한다(초당 갱신 불필요, 백그라운드에도 똑딱임).
 class LiveActivityManager {
   static let shared = LiveActivityManager()
 
@@ -47,6 +47,17 @@ class LiveActivityManager {
   }
 
   @available(iOS 16.1, *)
+  private func contentState(_ a: [String: Any]) -> FocusJourneyAttributes.ContentState {
+    FocusJourneyAttributes.ContentState(
+      startEpoch: (a["startMs"] as? NSNumber)?.doubleValue ?? 0,
+      endEpoch: (a["endMs"] as? NSNumber)?.doubleValue ?? 0,
+      paused: (a["paused"] as? NSNumber)?.boolValue ?? false,
+      remaining: (a["remaining"] as? NSNumber)?.intValue ?? 0,
+      progress: (a["progress"] as? NSNumber)?.doubleValue ?? 0.0
+    )
+  }
+
+  @available(iOS 16.1, *)
   private func start(_ args: Any?, _ result: @escaping FlutterResult) {
     guard ActivityAuthorizationInfo().areActivitiesEnabled,
           let a = args as? [String: Any],
@@ -56,13 +67,10 @@ class LiveActivityManager {
       return
     }
     let emoji = a["emoji"] as? String ?? ""
-    let remaining = a["remaining"] as? Int ?? 0
-    let progress = a["progress"] as? Double ?? 0.0
-
     let attributes = FocusJourneyAttributes(origin: origin, dest: dest, emoji: emoji)
-    let state = FocusJourneyAttributes.ContentState(remaining: remaining, progress: progress)
     do {
-      let activity = try Activity.request(attributes: attributes, contentState: state)
+      let activity = try Activity.request(
+        attributes: attributes, contentState: contentState(a))
       result(activity.id)
     } catch {
       result(nil)
@@ -71,10 +79,7 @@ class LiveActivityManager {
 
   @available(iOS 16.1, *)
   private func update(_ args: Any?, _ result: @escaping FlutterResult) {
-    let a = args as? [String: Any] ?? [:]
-    let remaining = a["remaining"] as? Int ?? 0
-    let progress = a["progress"] as? Double ?? 0.0
-    let state = FocusJourneyAttributes.ContentState(remaining: remaining, progress: progress)
+    let state = contentState(args as? [String: Any] ?? [:])
     Task {
       for activity in Activity<FocusJourneyAttributes>.activities {
         await activity.update(using: state)
@@ -98,8 +103,11 @@ class LiveActivityManager {
 @available(iOS 16.1, *)
 struct FocusJourneyAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
-    var remaining: Int // 남은 초
-    var progress: Double // 0.0 ~ 1.0
+    var startEpoch: Double // 시작 시각(ms) — 진행/카운트다운 기준
+    var endEpoch: Double // 종료 시각(ms)
+    var paused: Bool // 일시정지면 정적 표시
+    var remaining: Int // 일시정지/폴백 표시용 남은 초
+    var progress: Double // 일시정지/폴백 표시용 진행률
   }
 
   var origin: String

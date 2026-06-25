@@ -29,7 +29,6 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
   bool _handledFinish = false;
   bool _notifStarted = false;
   bool _lastPaused = false;
-  int _lastNotifiedRemaining = -1;
 
   @override
   void initState() {
@@ -39,40 +38,51 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
     _startNotification();
   }
 
+  /// 시작=now-경과, 종료=now+남음 → 위젯/알림이 이 구간을 스스로 카운트다운.
+  ({int startMs, int endMs}) _bounds(TimerState t) {
+    final now = DateTime.now();
+    final nowMs = now.millisecondsSinceEpoch;
+    return (
+      startMs: nowMs - t.elapsedAt(now).inSeconds * 1000,
+      endMs: nowMs + t.remainingAt(now).inSeconds * 1000,
+    );
+  }
+
   Future<void> _startNotification() async {
     final timer = ref.read(focusTimerProvider);
     final sel = ref.read(journeySelectionProvider);
     if (timer == null || !sel.isComplete) return;
     final now = DateTime.now();
+    final b = _bounds(timer);
     await ref.read(notificationServiceProvider).start(
           origin: sel.origin!.name,
           dest: sel.destination!.name,
           transportEmoji: sel.transport!.emoji,
+          startMs: b.startMs,
+          endMs: b.endMs,
           remainingSeconds: timer.remainingAt(now).inSeconds,
           progress: timer.progressAt(now),
         );
     _notifStarted = true;
   }
 
-  /// 표시값이 의미있게 바뀔 때만(5초 단위 또는 정지/재개) 알림을 갱신.
-  void _maybeUpdateNotification(TimerState? t) {
+  /// 시간은 위젯이 스스로 카운트다운하므로, 일시정지 상태가 바뀔 때만 갱신한다.
+  void _onTimerChanged(TimerState? t) {
     if (!_notifStarted || t == null || t.finished) return;
-    final now = DateTime.now();
-    final remaining = t.remainingAt(now).inSeconds;
-    final paused = t.isPaused;
-    final pauseChanged = paused != _lastPaused;
-    final tick = remaining != _lastNotifiedRemaining &&
-        (remaining % 5 == 0 || remaining <= 5);
-    if (!pauseChanged && !tick) return;
-    _lastPaused = paused;
-    _lastNotifiedRemaining = remaining;
+    if (t.isPaused == _lastPaused) return;
+    _lastPaused = t.isPaused;
     final sel = ref.read(journeySelectionProvider);
     if (!sel.isComplete) return;
+    final now = DateTime.now();
+    final b = _bounds(t);
     ref.read(notificationServiceProvider).update(
           origin: sel.origin!.name,
           dest: sel.destination!.name,
           transportEmoji: sel.transport!.emoji,
-          remainingSeconds: remaining,
+          startMs: b.startMs,
+          endMs: b.endMs,
+          paused: t.isPaused,
+          remainingSeconds: t.remainingAt(now).inSeconds,
           progress: t.progressAt(now),
         );
   }
@@ -174,7 +184,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
       if (next != null && next.finished) {
         _onFinished();
       } else {
-        _maybeUpdateNotification(next);
+        _onTimerChanged(next);
       }
     });
 

@@ -2,12 +2,14 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-/// ⚠️ 이 구조체는 Runner 타깃(AppDelegate.swift)의 FocusJourneyAttributes 와
-/// 필드가 정확히 동일해야 Live Activity 가 연결됩니다. 한쪽을 바꾸면 다른 쪽도 함께 수정하세요.
+/// ⚠️ Runner 타깃(AppDelegate.swift)의 FocusJourneyAttributes 와 필드가 정확히 동일해야 함.
 struct FocusJourneyAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
-    var remaining: Int // 남은 초
-    var progress: Double // 0.0 ~ 1.0
+    var startEpoch: Double
+    var endEpoch: Double
+    var paused: Bool
+    var remaining: Int
+    var progress: Double
   }
 
   var origin: String
@@ -15,7 +17,7 @@ struct FocusJourneyAttributes: ActivityAttributes {
   var emoji: String
 }
 
-private func formatRemaining(_ seconds: Int) -> String {
+private func clockText(_ seconds: Int) -> String {
   let m = seconds / 60
   let s = seconds % 60
   if m >= 60 {
@@ -24,7 +26,41 @@ private func formatRemaining(_ seconds: Int) -> String {
   return String(format: "%02d:%02d", m, s)
 }
 
-/// 잠금화면 배너 + 다이나믹 아일랜드 UI.
+private func interval(_ s: FocusJourneyAttributes.ContentState) -> ClosedRange<Date> {
+  let start = Date(timeIntervalSince1970: s.startEpoch / 1000)
+  var end = Date(timeIntervalSince1970: s.endEpoch / 1000)
+  if end <= start { end = start.addingTimeInterval(1) }
+  return start...end
+}
+
+/// 남은시간: 진행 중이면 timerInterval 로 매초 자동 카운트다운, 일시정지면 정적.
+@ViewBuilder
+private func remainingView(_ s: FocusJourneyAttributes.ContentState, font: Font) -> some View {
+  if s.paused {
+    Text(clockText(s.remaining)).font(font).monospacedDigit()
+  } else {
+    Text(timerInterval: interval(s), countsDown: true)
+      .font(font)
+      .monospacedDigit()
+      .multilineTextAlignment(.trailing)
+  }
+}
+
+/// 진행바: 진행 중이면 timerInterval 로 자동 진행, 일시정지면 정적.
+@ViewBuilder
+private func progressView(_ s: FocusJourneyAttributes.ContentState) -> some View {
+  if s.paused {
+    ProgressView(value: s.progress).tint(.orange)
+  } else {
+    ProgressView(timerInterval: interval(s), countsDown: false) {
+      EmptyView()
+    } currentValueLabel: {
+      EmptyView()
+    }
+    .tint(.orange)
+  }
+}
+
 struct FocusJourneyLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: FocusJourneyAttributes.self) { context in
@@ -35,13 +71,10 @@ struct FocusJourneyLiveActivity: Widget {
           Text("\(context.attributes.origin) → \(context.attributes.dest)")
             .font(.headline)
           Spacer()
-          Text(formatRemaining(context.state.remaining))
-            .monospacedDigit()
-            .font(.headline)
+          remainingView(context.state, font: .headline)
         }
-        ProgressView(value: context.state.progress)
-          .tint(.orange)
-        Text("집중 여정 진행 중")
+        progressView(context.state)
+        Text(context.state.paused ? "일시정지" : "집중 여정 진행 중")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -55,23 +88,19 @@ struct FocusJourneyLiveActivity: Widget {
           Text(context.attributes.emoji).font(.title2)
         }
         DynamicIslandExpandedRegion(.trailing) {
-          Text(formatRemaining(context.state.remaining))
-            .monospacedDigit()
-            .font(.title3)
+          remainingView(context.state, font: .title3)
         }
         DynamicIslandExpandedRegion(.bottom) {
           VStack(alignment: .leading, spacing: 4) {
             Text("\(context.attributes.origin) → \(context.attributes.dest)")
               .font(.caption)
-            ProgressView(value: context.state.progress).tint(.orange)
+            progressView(context.state)
           }
         }
       } compactLeading: {
         Text(context.attributes.emoji)
       } compactTrailing: {
-        Text(formatRemaining(context.state.remaining))
-          .monospacedDigit()
-          .frame(maxWidth: 56)
+        remainingView(context.state, font: .caption2).frame(maxWidth: 64)
       } minimal: {
         Text(context.attributes.emoji)
       }
