@@ -19,7 +19,7 @@ class JourneyConfirmScreen extends ConsumerStatefulWidget {
 }
 
 class _JourneyConfirmScreenState extends ConsumerState<JourneyConfirmScreen> {
-  int _selectedMinutes = 25;
+  int? _selectedMinutes; // null이면 실제 소요시간을 기본값으로 사용
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +32,11 @@ class _JourneyConfirmScreenState extends ConsumerState<JourneyConfirmScreen> {
     }
     final route = buildRoute(sel.origin!, sel.destination!, sel.transport!);
     final actual = route.durationMinutes;
+    final selected = _selectedMinutes ?? actual; // 기본값 = 실제 소요시간
     final options = <(int, String)>[
-      (25, '25분'),
-      (50, '50분'),
-      (90, '90분'),
       (actual, '실제 ${formatMinutesKo(actual)}'),
+      for (final m in const [30, 60, 90])
+        if (m != actual) (m, '$m분'),
     ];
 
     return Scaffold(
@@ -69,7 +69,7 @@ class _JourneyConfirmScreenState extends ConsumerState<JourneyConfirmScreen> {
                   for (final (m, label) in options)
                     _DurationChip(
                       label: label,
-                      selected: _selectedMinutes == m,
+                      selected: selected == m,
                       onTap: () => setState(() => _selectedMinutes = m),
                     ),
                 ],
@@ -88,7 +88,7 @@ class _JourneyConfirmScreenState extends ConsumerState<JourneyConfirmScreen> {
                   onPressed: () {
                     ref
                         .read(focusTimerProvider.notifier)
-                        .start(Duration(minutes: _selectedMinutes));
+                        .start(Duration(minutes: selected));
                     context.go('/focus');
                   },
                   child: const Text('집중 시작',

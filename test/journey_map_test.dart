@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:korean_focus/data/models/place.dart';
 import 'package:korean_focus/data/models/transport_type.dart';
 import 'package:korean_focus/features/focus/journey_map.dart';
 
@@ -15,8 +16,20 @@ void main() {
               child: JourneyMap(
                 progress: 0.5,
                 transport: TransportType.train,
-                originName: '전주역',
-                destName: '서울역',
+                origin: Place(
+                    id: 'jeonju_st',
+                    name: '전주역',
+                    city: '전주',
+                    type: TransportType.train,
+                    lat: 35.8497,
+                    lng: 127.1601),
+                destination: Place(
+                    id: 'seoul_st',
+                    name: '서울역',
+                    city: '서울',
+                    type: TransportType.train,
+                    lat: 37.5547,
+                    lng: 126.9706),
               ),
             ),
           ),

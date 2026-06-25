@@ -254,8 +254,8 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
                       : JourneyMap(
                           progress: progress,
                           transport: sel.transport!,
-                          originName: sel.origin!.name,
-                          destName: sel.destination!.name,
+                          origin: sel.origin!,
+                          destination: sel.destination!,
                         ),
                 ),
                 const SizedBox(height: 24),
