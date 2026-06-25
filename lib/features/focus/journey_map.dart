@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text.dart';
 import '../../core/ui/transport_icon.dart';
 import '../../data/models/place.dart';
 import '../../data/models/transport_type.dart';
+import 'map_atmosphere.dart';
 import 'region_boundaries.dart';
 
 /// 2차 베지에 곡선 위 한 점.
@@ -110,11 +112,19 @@ class _JourneyMapState extends State<JourneyMap>
 
   @override
   Widget build(BuildContext context) {
+    final atmo = MapAtmosphere.forHour(DateTime.now().hour);
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF4EEE3),
+        // 시간대별 하늘(아침·낮·저녁·밤).
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: atmo.sky,
+          stops: atmo.stops,
+        ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: AppColors.line2),
+        boxShadow: AppColors.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
@@ -151,6 +161,7 @@ class _JourneyMapState extends State<JourneyMap>
                             pB: pB,
                             control: control,
                             progress: t,
+                            atmo: atmo,
                           ),
                         ),
                       ),
@@ -166,12 +177,18 @@ class _JourneyMapState extends State<JourneyMap>
                             child: child,
                           ),
                           child: _VehicleMarker(
-                              icon: transportIcon(widget.transport)),
+                              icon: transportIcon(widget.transport),
+                              glow: atmo.vehicleGlow),
                         ),
                       ),
                     ],
                   ),
                 ),
+              ),
+              Positioned(
+                left: 10,
+                top: 10,
+                child: _TimeChip(atmo: atmo),
               ),
               Positioned(
                 right: 10,
@@ -221,8 +238,9 @@ class _JourneyMapState extends State<JourneyMap>
 }
 
 class _VehicleMarker extends StatelessWidget {
-  const _VehicleMarker({required this.icon});
+  const _VehicleMarker({required this.icon, required this.glow});
   final IconData icon;
+  final Color glow;
 
   @override
   Widget build(BuildContext context) {
@@ -233,9 +251,39 @@ class _VehicleMarker extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.primary,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.surface, width: 3),
+        border: Border.all(color: const Color(0xFFF6E4B8), width: 3),
+        boxShadow: [
+          BoxShadow(color: glow, blurRadius: 16, spreadRadius: 1),
+        ],
       ),
       child: Icon(icon, color: Colors.white, size: 22),
+    );
+  }
+}
+
+/// 좌상단 시간대 표시(아침·낮·저녁·밤).
+class _TimeChip extends StatelessWidget {
+  const _TimeChip({required this.atmo});
+  final MapAtmosphere atmo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0x40000000),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: const Color(0x33FFFFFF)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(atmo.icon, size: 13, color: const Color(0xFFFFF7E9)),
+          const SizedBox(width: 5),
+          Text(atmo.label,
+              style: AppText.label(size: 10, color: const Color(0xFFFFF7E9))),
+        ],
+      ),
     );
   }
 }
@@ -272,6 +320,7 @@ class _MapPainter extends CustomPainter {
     required this.pB,
     required this.control,
     required this.progress,
+    required this.atmo,
   });
 
   final List<BoundaryPolygon> provinces;
@@ -280,17 +329,29 @@ class _MapPainter extends CustomPainter {
   final Offset pB;
   final Offset control;
   final double progress;
+  final MapAtmosphere atmo;
+
+  /// 별자리(캔버스 비율 좌표). 앞에서부터 atmo.stars개만 그린다.
+  static const _starField = <Offset>[
+    Offset(0.12, 0.14), Offset(0.24, 0.30), Offset(0.34, 0.10),
+    Offset(0.46, 0.24), Offset(0.58, 0.12), Offset(0.68, 0.30),
+    Offset(0.78, 0.16), Offset(0.88, 0.27), Offset(0.16, 0.42),
+    Offset(0.40, 0.40), Offset(0.62, 0.44), Offset(0.84, 0.40),
+  ];
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1) 행정구역(시·도) 경계 — 옅은 채움 + 외곽선.
+    // 0) 천체(별·해·달) — 하늘에 먼저 그려 땅이 가리게 한다.
+    _paintSky(canvas, size);
+
+    // 1) 행정구역(시·도) 경계 — 어두운 땅 + 헤어라인.
     final fill = Paint()
-      ..color = AppColors.primary.withValues(alpha: 0.05)
+      ..color = atmo.landFill
       ..style = PaintingStyle.fill;
     final stroke = Paint()
-      ..color = AppColors.primary.withValues(alpha: 0.22)
+      ..color = atmo.landStroke
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
+      ..strokeWidth = 0.8
       ..strokeJoin = StrokeJoin.round;
     for (final poly in provinces) {
       final path = Path()..fillType = PathFillType.evenOdd;
@@ -302,40 +363,91 @@ class _MapPainter extends CustomPainter {
       canvas.drawPath(path, stroke);
     }
 
-    // 2) 경로(호): 남은 구간 점선 + 지나온 구간 실선.
+    // 2) 경로(호): 남은 구간 점선 + 지나온 구간 빛나는 선.
     final route = Path()
       ..moveTo(pA.dx, pA.dy)
       ..quadraticBezierTo(control.dx, control.dy, pB.dx, pB.dy);
     canvas.drawPath(
-      _dashPath(route, dash: 4, gap: 7),
+      _dashPath(route, dash: 2.5, gap: 6),
       Paint()
-        ..color = AppColors.textTertiary.withValues(alpha: 0.6)
+        ..color = atmo.trailFaint
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round,
     );
     final metric = route.computeMetrics().first;
+    final traveled = metric.extractPath(0, metric.length * progress);
     canvas.drawPath(
-      metric.extractPath(0, metric.length * progress),
+      traveled,
       Paint()
-        ..color = AppColors.primary
+        ..color = atmo.trailGlow
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 8
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+    canvas.drawPath(
+      traveled,
+      Paint()
+        ..color = atmo.trailBright
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3.5
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );
 
-    // 3) 출발(채움) / 도착(외곽선) 점.
-    canvas.drawCircle(pA, 5.5, Paint()..color = AppColors.primaryDark);
-    canvas.drawCircle(pB, 6.5, Paint()..color = AppColors.surface);
+    // 3) 출발(채움) / 도착(링).
+    canvas.drawCircle(pA, 4.5, Paint()..color = atmo.originDot);
+    canvas.drawCircle(pB, 6.0, Paint()..color = atmo.destFill);
     canvas.drawCircle(
       pB,
-      6.5,
+      6.0,
       Paint()
-        ..color = AppColors.primary
+        ..color = atmo.destRing
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
     );
+  }
+
+  /// 별·해·달을 하늘 영역(상단)에 그린다. 땅보다 먼저 그려 가려지게 한다.
+  void _paintSky(Canvas canvas, Size size) {
+    if (atmo.stars > 0) {
+      final star = Paint()..color = const Color(0xCCFFFFFF);
+      for (var i = 0; i < atmo.stars && i < _starField.length; i++) {
+        final o = _starField[i];
+        canvas.drawCircle(
+          Offset(o.dx * size.width, o.dy * size.height),
+          i.isEven ? 1.2 : 0.8,
+          star,
+        );
+      }
+    }
+    final sun = atmo.sun;
+    if (sun != null) {
+      final c = Offset(sun.x * size.width, sun.y * size.height);
+      canvas.drawCircle(
+        c,
+        sun.r * 1.8,
+        Paint()
+          ..color = sun.color.withValues(alpha: 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+      );
+      canvas.drawCircle(c, sun.r, Paint()..color = sun.color);
+    }
+    if (atmo.moon) {
+      final c = Offset(size.width * 0.80, size.height * 0.22);
+      canvas.drawCircle(
+        c,
+        18,
+        Paint()
+          ..color = const Color(0x55FFF6D9)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+      );
+      canvas.drawCircle(c, 9, Paint()..color = const Color(0xFFF3EAD2));
+      // 살짝 겹친 하늘색 원으로 초승달 모양을 만든다.
+      canvas.drawCircle(
+          Offset(c.dx + 4, c.dy - 2), 8, Paint()..color = atmo.sky.first);
+    }
   }
 
   void _addRing(Path path, List<LatLng> ring) {
@@ -370,5 +482,6 @@ class _MapPainter extends CustomPainter {
       old.progress != progress ||
       old.provinces.length != provinces.length ||
       old.pA != pA ||
-      old.pB != pB;
+      old.pB != pB ||
+      old.atmo.label != atmo.label;
 }

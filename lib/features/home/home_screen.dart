@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text.dart';
+import '../../core/ui/ticket_card.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/focus_session.dart';
 import '../../data/models/transport_type.dart';
@@ -27,10 +29,7 @@ class HomeScreen extends ConsumerWidget {
           children: [
             Text(
               '오늘도 좋은 여정 되세요',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(color: AppColors.textSecondary),
+              style: AppText.display(size: 20),
             ),
             const SizedBox(height: 16),
             _TodayCard(seconds: todaySeconds),
@@ -45,13 +44,7 @@ class HomeScreen extends ConsumerWidget {
               onTap: () => context.push('/collection'),
             ),
             const SizedBox(height: 32),
-            Text(
-              '최근 여정',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w500),
-            ),
+            Text('최근 여정', style: AppText.display(size: 16)),
             const SizedBox(height: 12),
             if (recent.isEmpty)
               const _EmptyRecent()
@@ -77,20 +70,16 @@ class _TodayCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.line),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('오늘 집중 시간',
-              style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+          Text('오늘 집중 시간', style: AppText.label(size: 12)),
           const SizedBox(height: 8),
           Text(
             formatDurationKo(seconds),
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
+            style: AppText.number(size: 34),
           ),
         ],
       ),
@@ -104,19 +93,43 @@ class _StartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    const cream = Color(0xFFFFF7E9);
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: TicketCard(
+        color: AppColors.primary,
+        borderColor: const Color(0x55FFF7E9),
+        notchColor: AppColors.background,
+        radius: 18,
+        padding: const EdgeInsets.all(18),
+        header: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('승차권 · BOARDING',
+                      style: AppText.label(
+                          size: 10, color: const Color(0xCCFFF7E9))),
+                  const SizedBox(height: 6),
+                  Text('새 여정 시작',
+                      style: AppText.display(size: 19, color: cream)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_rounded, color: cream),
+          ],
         ),
-        onPressed: onTap,
-        child: const Text('새 여정 시작',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        body: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('목적지를 정하고 떠나요',
+                style: TextStyle(fontSize: 12, color: Color(0xCCFFF7E9))),
+            Text('KF·01',
+                style: AppText.label(size: 10, color: const Color(0x99FFF7E9))),
+          ],
+        ),
       ),
     );
   }
@@ -195,6 +208,7 @@ class _RecentTile extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.line),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Row(
         children: [

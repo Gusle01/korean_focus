@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/collectible_category.dart';
 import '../../data/models/owned_collectible.dart';
@@ -64,22 +65,18 @@ class _ProgressCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.line),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('도감 진행도',
-              style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+          Text('도감 진행도', style: AppText.label(size: 12)),
           const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('$distinct',
-                  style: const TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary)),
+              Text('$distinct', style: AppText.number(size: 34)),
               Text(' / $total 종',
                   style: const TextStyle(
                       fontSize: 16, color: AppColors.textSecondary)),
@@ -117,11 +114,7 @@ class _CitySection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(city,
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+            Text(city, style: AppText.display(size: 16)),
             const SizedBox(width: 6),
             Text('${items.length}',
                 style: const TextStyle(
@@ -224,11 +217,7 @@ class _DetailSheet extends StatelessWidget {
                               color: AppColors.primaryDark,
                               fontWeight: FontWeight.w600)),
                       const SizedBox(height: 4),
-                      Text(item.name,
-                          style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary)),
+                      Text(item.name, style: AppText.display(size: 20)),
                     ],
                   ),
                 ),

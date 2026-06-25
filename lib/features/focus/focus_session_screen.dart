@@ -5,6 +5,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../core/notifications/notification_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/focus_session.dart';
 import '../../data/models/transport_type.dart';
@@ -237,7 +238,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
                       child: Text(sel.origin!.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: _stationStyle),
+                          style: AppText.display(size: 18)),
                     ),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8),
@@ -248,7 +249,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
                       child: Text(sel.destination!.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: _stationStyle),
+                          style: AppText.display(size: 18)),
                     ),
                   ],
                 ),
@@ -269,18 +270,11 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
                         ),
                 ),
                 const SizedBox(height: 24),
-                const Text('남은 집중 시간',
-                    style:
-                        TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+                Text('남은 집중 시간', style: AppText.label(size: 13)),
                 const SizedBox(height: 8),
                 Text(
                   formatClock(remaining.inSeconds),
-                  style: const TextStyle(
-                    fontSize: 44,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                    fontFeatures: [FontFeature.tabularFigures()],
-                  ),
+                  style: AppText.number(size: 46),
                 ),
                 const SizedBox(height: 18),
                 Row(
@@ -301,10 +295,10 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
                       width: 42,
                       child: Text('${(progress * 100).round()}%',
                           textAlign: TextAlign.end,
-                          style: const TextStyle(
-                              fontSize: 12,
+                          style: AppText.number(
+                              size: 12,
                               color: AppColors.primaryDark,
-                              fontWeight: FontWeight.w500)),
+                              letterSpacing: 0)),
                     ),
                   ],
                 ),
@@ -351,6 +345,3 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
     );
   }
 }
-
-const _stationStyle = TextStyle(
-    fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary);

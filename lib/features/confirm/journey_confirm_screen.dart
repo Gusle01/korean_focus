@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text.dart';
+import '../../core/ui/ticket_card.dart';
 import '../../core/ui/transport_icon.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/transport_type.dart';
@@ -163,16 +165,13 @@ class _TicketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return TicketCard(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Column(
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Text('승차권 · BOARDING', style: AppText.label(size: 10)),
+          const SizedBox(height: 14),
           Row(
             children: [
               Icon(icon, color: AppColors.primaryDark, size: 22),
@@ -198,7 +197,7 @@ class _TicketCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
           Row(
             children: [
               Expanded(
@@ -220,17 +219,13 @@ class _TicketCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          const Divider(color: AppColors.line, height: 1),
-          const SizedBox(height: 16),
-          const Text('예상 소요 시간',
-              style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+        ],
+      ),
+      body: Column(
+        children: [
+          Text('예상 소요 시간', style: AppText.label(size: 12)),
           const SizedBox(height: 4),
-          Text(durationText,
-              style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary)),
+          Text(durationText, style: AppText.number(size: 24)),
         ],
       ),
     );
@@ -249,16 +244,12 @@ class _Endpoint extends StatelessWidget {
     return Column(
       crossAxisAlignment: align,
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+        Text(label, style: AppText.label(size: 12)),
         const SizedBox(height: 4),
         Text(name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary)),
+            style: AppText.display(size: 18)),
       ],
     );
   }
