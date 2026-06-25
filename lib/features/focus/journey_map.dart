@@ -64,6 +64,8 @@ class JourneyMap extends StatefulWidget {
 class _JourneyMapState extends State<JourneyMap>
     with SingleTickerProviderStateMixin {
   late final AnimationController _bob;
+  final TransformationController _zoom = TransformationController();
+  Size _viewport = const Size(300, 300);
   List<BoundaryPolygon> _provinces = const [];
 
   @override
@@ -86,7 +88,24 @@ class _JourneyMapState extends State<JourneyMap>
   @override
   void dispose() {
     _bob.dispose();
+    _zoom.dispose();
     super.dispose();
+  }
+
+  /// 뷰포트 중심 기준으로 배율을 곱한다(핀치 줌과도 호환).
+  void _zoomBy(double factor) {
+    final current = _zoom.value.getMaxScaleOnAxis();
+    final target = (current * factor).clamp(1.0, 6.0);
+    if (target == current) return;
+    final f = target / current;
+    final c = _viewport.center(Offset.zero);
+    // 중심 c 기준 배율 f 행렬: p' = f*(p-c)+c → 현재 변환에 합성.
+    final s = Matrix4.identity()
+      ..setEntry(0, 0, f)
+      ..setEntry(1, 1, f)
+      ..setEntry(0, 3, c.dx * (1 - f))
+      ..setEntry(1, 3, c.dy * (1 - f));
+    _zoom.value = s.multiplied(_zoom.value);
   }
 
   @override
@@ -101,6 +120,7 @@ class _JourneyMapState extends State<JourneyMap>
       child: LayoutBuilder(
         builder: (context, c) {
           final size = Size(c.maxWidth, c.maxHeight);
+          _viewport = size;
           final proj = _KoreaProjection(size);
           final pA = proj.project(widget.origin.lat, widget.origin.lng);
           final pB = proj.project(widget.destination.lat, widget.destination.lng);
@@ -116,29 +136,54 @@ class _JourneyMapState extends State<JourneyMap>
           return Stack(
             children: [
               Positioned.fill(
-                child: CustomPaint(
-                  painter: _MapPainter(
-                    provinces: _provinces,
-                    proj: proj,
-                    pA: pA,
-                    pB: pB,
-                    control: control,
-                    progress: t,
+                child: InteractiveViewer(
+                  transformationController: _zoom,
+                  minScale: 1,
+                  maxScale: 6,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _MapPainter(
+                            provinces: _provinces,
+                            proj: proj,
+                            pA: pA,
+                            pB: pB,
+                            control: control,
+                            progress: t,
+                          ),
+                        ),
+                      ),
+                      _label(widget.origin.name, pA, size, isOrigin: true),
+                      _label(widget.destination.name, pB, size, isOrigin: false),
+                      Positioned(
+                        left: pos.dx - 22,
+                        top: pos.dy - 22,
+                        child: AnimatedBuilder(
+                          animation: _bob,
+                          builder: (context, child) => Transform.translate(
+                            offset: Offset(0, (_bob.value - 0.5) * 6),
+                            child: child,
+                          ),
+                          child: _VehicleMarker(
+                              icon: transportIcon(widget.transport)),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              _label(widget.origin.name, pA, size, isOrigin: true),
-              _label(widget.destination.name, pB, size, isOrigin: false),
               Positioned(
-                left: pos.dx - 22,
-                top: pos.dy - 22,
-                child: AnimatedBuilder(
-                  animation: _bob,
-                  builder: (context, child) => Transform.translate(
-                    offset: Offset(0, (_bob.value - 0.5) * 6),
-                    child: child,
-                  ),
-                  child: _VehicleMarker(icon: transportIcon(widget.transport)),
+                right: 10,
+                bottom: 10,
+                child: Column(
+                  children: [
+                    _ZoomBtn(icon: Icons.add_rounded, onTap: () => _zoomBy(1.6)),
+                    const SizedBox(height: 8),
+                    _ZoomBtn(
+                        icon: Icons.remove_rounded,
+                        onTap: () => _zoomBy(1 / 1.6)),
+                  ],
                 ),
               ),
             ],
@@ -191,6 +236,30 @@ class _VehicleMarker extends StatelessWidget {
         border: Border.all(color: AppColors.surface, width: 3),
       ),
       child: Icon(icon, color: Colors.white, size: 22),
+    );
+  }
+}
+
+class _ZoomBtn extends StatelessWidget {
+  const _ZoomBtn({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: const CircleBorder(),
+      elevation: 1,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: Icon(icon, size: 20, color: AppColors.textPrimary),
+        ),
+      ),
     );
   }
 }
