@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/focus_session.dart';
 import '../../data/models/transport_type.dart';
+import '../../data/repositories/collection_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import '../journey/journey_selection_provider.dart';
 
@@ -17,6 +18,7 @@ class HomeScreen extends ConsumerWidget {
     final repo = ref.watch(sessionRepositoryProvider);
     final todaySeconds = repo.todaySeconds();
     final recent = repo.recent();
+    final collectionCount = ref.watch(collectionRepositoryProvider).count;
 
     return Scaffold(
       body: SafeArea(
@@ -37,6 +39,11 @@ class HomeScreen extends ConsumerWidget {
               ref.read(journeySelectionProvider.notifier).reset();
               context.push('/transport');
             }),
+            const SizedBox(height: 12),
+            _CollectionTile(
+              count: collectionCount,
+              onTap: () => context.push('/collection'),
+            ),
             const SizedBox(height: 32),
             Text(
               '최근 여정',
@@ -110,6 +117,50 @@ class _StartButton extends StatelessWidget {
         onPressed: onTap,
         child: const Text('새 여정 시작',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+      ),
+    );
+  }
+}
+
+class _CollectionTile extends StatelessWidget {
+  const _CollectionTile({required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.inventory_2_outlined,
+                  color: AppColors.primaryDark, size: 22),
+              const SizedBox(width: 12),
+              const Text('진열장',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary)),
+              const Spacer(),
+              Text(count > 0 ? '$count개 수집' : '비어 있음',
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary)),
+              const SizedBox(width: 6),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.textTertiary),
+            ],
+          ),
+        ),
       ),
     );
   }

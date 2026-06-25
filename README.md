@@ -36,9 +36,18 @@ flutter run
 
 ## 진행 상황
 - [x] Phase 0 — 프로젝트 스캐폴딩 + 패키지
-- [x] Phase 1 — 데이터 레이어 (모델 · 정적데이터 · 리포지토리 · 테스트 9개)
-- [ ] Phase 2 — 교통수단 선택 / 출발·도착 선택(검색)
-- [ ] Phase 3~ — 여정 확인 · 집중 타이머 · 지도 애니메이션 · 완료 화면
+- [x] Phase 1 — 데이터 레이어 (모델 · 정적데이터 · 리포지토리)
+- [x] Phase 2 — 교통수단 선택 / 출발·도착 선택(검색)
+- [x] Phase 3 — 여정 확인 · 집중 타이머 · 지도 애니메이션 · 완료 화면
+- [x] 지역 컬렉션 + 진열장 — 도착 시 도착 도시의 특산품·음식·전통·명소 중
+      하나를 지급, 진열장에 획득일·출발지·이동수단·소요시간과 함께 보관
+- [x] 실제 지도 개선 — 행정구역 경계선(시·도 ↔ 시·군·구 줌 전환) + 핀치 확대/축소
+- [x] 실시간 알림 — Android 진행 알림 + iOS 도착 알림 / Live Activity(다이나믹 아일랜드)
+      ※ iOS Live Activity 위젯은 1회 Xcode 설정 필요 → `ios/LIVE_ACTIVITY_SETUP.md`
+
+## 데이터 출처
+- 행정구역 경계: [southkorea/southkorea-maps](https://github.com/southkorea/southkorea-maps)
+  (KOSTAT 2018) — 좌표를 RDP 알고리즘으로 단순화해 `assets/geo/`에 번들.
 
 ## 테스트
 ```bash

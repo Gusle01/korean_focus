@@ -6,6 +6,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'app.dart';
 import 'data/models/focus_session.dart';
+import 'data/models/owned_collectible.dart';
+import 'data/repositories/collection_repository.dart';
 import 'data/repositories/session_repository.dart';
 
 void main() {
@@ -14,7 +16,9 @@ void main() {
     try {
       await Hive.initFlutter();
       Hive.registerAdapter(FocusSessionAdapter());
+      Hive.registerAdapter(OwnedCollectibleAdapter());
       await Hive.openBox<FocusSession>(sessionsBoxName);
+      await Hive.openBox<OwnedCollectible>(collectiblesBoxName);
     } catch (e, st) {
       runApp(StartupErrorApp(error: e.toString(), stack: st.toString()));
       return;

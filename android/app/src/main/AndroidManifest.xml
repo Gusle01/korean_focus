@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 실제 지도(OpenStreetMap) 타일 로드용 -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 집중 여정 진행 알림(Android 13+ 런타임 권한 필요) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="korean_focus"
         android:name="${applicationName}"

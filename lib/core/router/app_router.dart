@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/collection/display_case_screen.dart';
 import '../../features/complete/complete_screen.dart';
 import '../../features/confirm/journey_confirm_screen.dart';
 import '../../features/focus/focus_session_screen.dart';
@@ -35,6 +36,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/complete',
       builder: (context, state) => const CompleteScreen(),
+    ),
+    GoRoute(
+      path: '/collection',
+      builder: (context, state) => const DisplayCaseScreen(),
     ),
   ],
 );
