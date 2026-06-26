@@ -21,6 +21,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(sessionRepositoryProvider);
     final todaySeconds = repo.todaySeconds();
+    final streak = repo.streak();
     final recent = repo.recent();
     final collectionCount = ref.watch(collectionRepositoryProvider).count;
 
@@ -34,7 +35,11 @@ class HomeScreen extends ConsumerWidget {
                 .fadeIn(duration: 420.ms)
                 .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
             const SizedBox(height: 16),
-            _TodayCard(seconds: todaySeconds)
+            _TodayCard(
+              seconds: todaySeconds,
+              streak: streak,
+              onTap: () => context.push('/stats'),
+            )
                 .animate(delay: 80.ms)
                 .fadeIn(duration: 420.ms)
                 .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
@@ -77,29 +82,86 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _TodayCard extends StatelessWidget {
-  const _TodayCard({required this.seconds});
+  const _TodayCard(
+      {required this.seconds, required this.streak, required this.onTap});
   final int seconds;
+  final int streak;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.line),
+            boxShadow: AppColors.cardShadow,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('오늘 집중 시간', style: AppText.label(size: 12)),
+                  const Spacer(),
+                  if (streak > 0) _StreakBadge(days: streak),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    formatDurationKo(seconds),
+                    style: AppText.number(size: 34),
+                  ),
+                  const Spacer(),
+                  Text('통계 보기',
+                      style: AppText.label(
+                          size: 11, color: AppColors.textTertiary)),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: AppColors.textTertiary, size: 20),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StreakBadge extends StatelessWidget {
+  const _StreakBadge({required this.days});
+  final int days;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.danchung.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.line),
-        boxShadow: AppColors.cardShadow,
+        border: Border.all(color: AppColors.danchung.withValues(alpha: 0.25)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text('오늘 집중 시간', style: AppText.label(size: 12)),
-          const SizedBox(height: 8),
-          Text(
-            formatDurationKo(seconds),
-            style: AppText.number(size: 34),
-          ),
+          const Text('🔥', style: TextStyle(fontSize: 13)),
+          const SizedBox(width: 4),
+          Text('$days일 연속',
+              style: AppText.number(
+                  size: 13,
+                  color: AppColors.danchung,
+                  weight: FontWeight.w700)),
         ],
       ),
     );

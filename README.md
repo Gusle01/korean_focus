@@ -44,6 +44,8 @@ flutter run
 - [x] 실제 지도 개선 — 행정구역 경계선(시·도 ↔ 시·군·구 줌 전환) + 핀치 확대/축소
 - [x] 실시간 알림 — Android 진행 알림 + iOS 도착 알림 / Live Activity(다이나믹 아일랜드)
       ※ iOS Live Activity 위젯은 1회 Xcode 설정 필요 → `ios/LIVE_ACTIVITY_SETUP.md`
+- [x] 통계 + 연속 집중일 — 누적 집중·완주율·최근 7일 그래프·교통수단 분포 통계 화면
+      + 홈 카드에 🔥 연속 집중일(스트릭) 배지
 
 ## 데이터 출처
 - 행정구역 경계: [southkorea/southkorea-maps](https://github.com/southkorea/southkorea-maps)

@@ -8,6 +8,7 @@ import '../../features/confirm/journey_confirm_screen.dart';
 import '../../features/focus/focus_session_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/place/place_select_screen.dart';
+import '../../features/stats/stats_screen.dart';
 import '../../features/transport/transport_select_screen.dart';
 
 /// 화면 전환 — 살짝 떠오르며 페이드 인(여정의 결).
@@ -78,6 +79,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/collection',
       pageBuilder: (context, state) => _page(state, const DisplayCaseScreen()),
+    ),
+    GoRoute(
+      path: '/stats',
+      pageBuilder: (context, state) => _page(state, const StatsScreen()),
     ),
   ],
 );
