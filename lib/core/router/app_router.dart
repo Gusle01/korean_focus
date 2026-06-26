@@ -1,4 +1,5 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/active_journey_repository.dart';
@@ -12,8 +13,13 @@ import '../../features/place/place_select_screen.dart';
 import '../../features/stats/stats_screen.dart';
 import '../../features/transport/transport_select_screen.dart';
 
-/// 화면 전환 — 살짝 떠오르며 페이드 인(여정의 결).
-CustomTransitionPage<void> _page(GoRouterState state, Widget child) {
+/// 화면 전환.
+/// - iOS: CupertinoPage → 네이티브 가장자리 스와이프 뒤로가기 + iOS 슬라이드.
+/// - 그 외(안드로이드 등): 살짝 떠오르며 페이드 인(여정의 결).
+Page<void> _page(GoRouterState state, Widget child) {
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    return CupertinoPage<void>(key: state.pageKey, child: child);
+  }
   return CustomTransitionPage<void>(
     key: state.pageKey,
     child: child,

@@ -64,43 +64,70 @@ private func progressView(_ s: FocusJourneyAttributes.ContentState) -> some View
 struct FocusJourneyLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: FocusJourneyAttributes.self) { context in
-      // 잠금화면 / 배너
-      VStack(alignment: .leading, spacing: 8) {
-        HStack {
+      // 잠금화면 / 배너 — 큼직하게.
+      VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 8) {
           Text(context.attributes.emoji)
+            .font(.title3)
           Text("\(context.attributes.origin) → \(context.attributes.dest)")
-            .font(.headline)
+            .font(.title3)
+            .fontWeight(.semibold)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
           Spacer()
-          remainingView(context.state, font: .headline)
+          Text(context.state.paused ? "일시정지" : "집중 중")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
+        HStack(alignment: .firstTextBaseline) {
+          Text("남은 시간")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+          Spacer()
+          remainingView(
+            context.state,
+            font: .system(size: 40, weight: .semibold, design: .rounded))
         }
         progressView(context.state)
-        Text(context.state.paused ? "일시정지" : "집중 여정 진행 중")
-          .font(.caption)
-          .foregroundStyle(.secondary)
+          .scaleEffect(x: 1, y: 1.8, anchor: .center)
+          .padding(.vertical, 4)
       }
-      .padding()
+      .padding(20)
       .activityBackgroundTint(Color.black.opacity(0.55))
       .activitySystemActionForegroundColor(Color.white)
 
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
-          Text(context.attributes.emoji).font(.title2)
+          Text(context.attributes.emoji).font(.largeTitle)
+        }
+        DynamicIslandExpandedRegion(.center) {
+          Text("\(context.attributes.origin) → \(context.attributes.dest)")
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
         }
         DynamicIslandExpandedRegion(.trailing) {
-          remainingView(context.state, font: .title3)
+          remainingView(
+            context.state,
+            font: .system(size: 28, weight: .semibold, design: .rounded))
+            .frame(maxWidth: 130)
         }
         DynamicIslandExpandedRegion(.bottom) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("\(context.attributes.origin) → \(context.attributes.dest)")
-              .font(.caption)
+          VStack(alignment: .leading, spacing: 6) {
             progressView(context.state)
+              .scaleEffect(x: 1, y: 1.6, anchor: .center)
+              .padding(.vertical, 3)
+            Text(context.state.paused ? "일시정지" : "집중 여정 진행 중")
+              .font(.caption2)
+              .foregroundStyle(.secondary)
           }
         }
       } compactLeading: {
         Text(context.attributes.emoji)
       } compactTrailing: {
-        remainingView(context.state, font: .caption2).frame(maxWidth: 64)
+        remainingView(context.state, font: .caption2).frame(maxWidth: 70)
       } minimal: {
         Text(context.attributes.emoji)
       }
