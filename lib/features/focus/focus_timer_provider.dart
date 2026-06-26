@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/repositories/active_journey_repository.dart';
+
 /// 타임스탬프 기반 타이머 상태. 카운터를 직접 깎지 않고 startedAt 기준으로
 /// 매번 경과를 계산하므로 백그라운드/복귀에도 정확하다.
 class TimerState {
@@ -62,6 +64,27 @@ class FocusTimerNotifier extends Notifier<TimerState?> {
   @override
   TimerState? build() {
     ref.onDispose(() => _ticker?.cancel());
+    // 앱 재실행 시 진행 중 여정이 있으면 타임스탬프 기준으로 타이머를 복원한다.
+    final snap = hasActiveJourney()
+        ? ref.read(activeJourneyRepositoryProvider).read()
+        : null;
+    if (snap != null) {
+      final restored = TimerState(
+        startedAt: snap.startedAt,
+        planned: Duration(seconds: snap.plannedSeconds),
+        pausedAccum: Duration(seconds: snap.pausedAccumSeconds),
+        pausedAt: snap.pausedAt,
+      );
+      // 떠나 있는 동안 이미 도착(완료)했으면 finished 로 복원.
+      if (restored.isOverAt(DateTime.now())) {
+        return restored.copyWith(finished: true);
+      }
+      // 진행 중이고 정지 상태가 아니면 틱 재개.
+      if (!restored.isPaused) {
+        _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+      }
+      return restored;
+    }
     return null;
   }
 

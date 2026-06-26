@@ -9,6 +9,7 @@ import '../../core/theme/app_text.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/focus_session.dart';
 import '../../data/models/transport_type.dart';
+import '../../data/repositories/active_journey_repository.dart';
 import '../../data/repositories/collection_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import '../complete/last_session_provider.dart';
@@ -52,7 +53,8 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
   Future<void> _startNotification() async {
     final timer = ref.read(focusTimerProvider);
     final sel = ref.read(journeySelectionProvider);
-    if (timer == null || !sel.isComplete) return;
+    if (timer == null || !sel.isComplete || timer.finished) return;
+    _persistActive(timer);
     final now = DateTime.now();
     final b = _bounds(timer);
     await ref.read(notificationServiceProvider).start(
@@ -67,11 +69,27 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
     _notifStarted = true;
   }
 
+  /// 진행 중 여정을 저장(앱 종료 후 재실행 시 집중 화면 복원용).
+  void _persistActive(TimerState t) {
+    final sel = ref.read(journeySelectionProvider);
+    if (!sel.isComplete) return;
+    ref.read(activeJourneyRepositoryProvider).save(
+          transport: sel.transport!,
+          origin: sel.origin!,
+          destination: sel.destination!,
+          startedAt: t.startedAt,
+          plannedSeconds: t.planned.inSeconds,
+          pausedAccumSeconds: t.pausedAccum.inSeconds,
+          pausedAt: t.pausedAt,
+        );
+  }
+
   /// 시간은 위젯이 스스로 카운트다운하므로, 일시정지 상태가 바뀔 때만 갱신한다.
   void _onTimerChanged(TimerState? t) {
     if (!_notifStarted || t == null || t.finished) return;
     if (t.isPaused == _lastPaused) return;
     _lastPaused = t.isPaused;
+    _persistActive(t); // 일시정지/재개 상태도 저장
     final sel = ref.read(journeySelectionProvider);
     if (!sel.isComplete) return;
     final now = DateTime.now();
@@ -135,6 +153,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
           dest: sel.destination!.name,
           collectibleName: awarded?.name,
         );
+    await ref.read(activeJourneyRepositoryProvider).clear();
     ref.read(focusTimerProvider.notifier).cancel();
     if (mounted) context.go('/complete');
   }
@@ -174,6 +193,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
             completed: false,
           ));
     }
+    await ref.read(activeJourneyRepositoryProvider).clear();
     ref.read(focusTimerProvider.notifier).cancel();
     await ref.read(notificationServiceProvider).cancel();
     if (mounted) context.go('/');
@@ -196,6 +216,12 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
         appBar: AppBar(),
         body: const Center(child: Text('진행 중인 여정이 없습니다')),
       );
+    }
+
+    // 복원된 타이머가 이미 완료 상태면(앱이 꺼진 사이 도착) 도착 처리.
+    // (build 시점엔 ref.listen 이 초기값으로는 안 불리므로 직접 트리거)
+    if (timer.finished && !_handledFinish) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onFinished());
     }
 
     final now = DateTime.now();

@@ -162,10 +162,9 @@ class NotificationService {
         ),
       );
     } catch (_) {}
-    if (_liveStarted) {
-      await _live.end(arrivedAt: dest);
-      _liveStarted = false;
-    }
+    // _liveStarted 와 무관하게 종료를 호출해, 재실행으로 남은 유령 활동도 정리.
+    await _live.end(arrivedAt: dest);
+    _liveStarted = false;
   }
 
   /// 중단/취소. 모든 진행 알림과 Live Activity 제거.
@@ -174,10 +173,9 @@ class NotificationService {
     try {
       await _fln.cancel(_progressId);
     } catch (_) {}
-    if (_liveStarted) {
-      await _live.end();
-      _liveStarted = false;
-    }
+    // _liveStarted 와 무관하게 종료를 호출해, 재실행으로 남은 유령 활동도 정리.
+    await _live.end();
+    _liveStarted = false;
   }
 
   static String _clock(int seconds) {

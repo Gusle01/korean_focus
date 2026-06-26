@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/repositories/active_journey_repository.dart';
 import '../../features/collection/display_case_screen.dart';
 import '../../features/complete/complete_screen.dart';
 import '../../features/confirm/journey_confirm_screen.dart';
@@ -35,6 +36,11 @@ CustomTransitionPage<void> _page(GoRouterState state, Widget child) {
 
 final appRouter = GoRouter(
   initialLocation: '/',
+  // 진행 중 여정이 있는데 홈으로 왔다면(앱 재실행 등) 집중 화면으로 복원.
+  redirect: (context, state) {
+    if (state.matchedLocation == '/' && hasActiveJourney()) return '/focus';
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/',

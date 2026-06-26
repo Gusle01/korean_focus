@@ -68,12 +68,18 @@ class LiveActivityManager {
     }
     let emoji = a["emoji"] as? String ?? ""
     let attributes = FocusJourneyAttributes(origin: origin, dest: dest, emoji: emoji)
-    do {
-      let activity = try Activity.request(
-        attributes: attributes, contentState: contentState(a))
-      result(activity.id)
-    } catch {
-      result(nil)
+    let state = contentState(a)
+    Task {
+      // 중복 방지: 앱이 종료됐다 복원될 때 남아있던 기존 활동을 먼저 종료.
+      for activity in Activity<FocusJourneyAttributes>.activities {
+        await activity.end(dismissalPolicy: .immediate)
+      }
+      do {
+        let activity = try Activity.request(attributes: attributes, contentState: state)
+        result(activity.id)
+      } catch {
+        result(nil)
+      }
     }
   }
 
