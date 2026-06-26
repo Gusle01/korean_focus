@@ -4,7 +4,7 @@
     <!-- 집중 여정 진행 알림(Android 13+ 런타임 권한 필요) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
-        android:label="korean_focus"
+        android:label="집중행"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
