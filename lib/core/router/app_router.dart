@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/active_journey_repository.dart';
+import '../../features/achievements/achievements_screen.dart';
 import '../../features/collection/display_case_screen.dart';
 import '../../features/complete/complete_screen.dart';
 import '../../features/confirm/journey_confirm_screen.dart';
@@ -83,6 +84,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/stats',
       pageBuilder: (context, state) => _page(state, const StatsScreen()),
+    ),
+    GoRoute(
+      path: '/achievements',
+      pageBuilder: (context, state) =>
+          _page(state, const AchievementsScreen()),
     ),
   ],
 );

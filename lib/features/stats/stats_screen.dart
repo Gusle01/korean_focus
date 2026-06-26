@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/transport_type.dart';
+import '../../data/repositories/collection_repository.dart';
 import '../../data/repositories/session_repository.dart';
+import '../achievements/achievement.dart';
 
 /// 통계: 누적 집중·완주율·연속 집중일·최근 7일 그래프·교통수단 분포.
 class StatsScreen extends ConsumerWidget {
@@ -21,6 +24,11 @@ class StatsScreen extends ConsumerWidget {
     final started = repo.totalCount();
     final week = repo.recentDays();
     final transport = repo.transportCounts();
+    final achievementStat = AchievementStat.from(
+        repo.all(),
+        ref.watch(collectionRepositoryProvider).distinctCount,
+        DateTime.now());
+    final achieved = unlockedCount(achievementStat);
 
     final hasData = started > 0;
 
@@ -64,6 +72,15 @@ class StatsScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _TotalCard(seconds: total, completed: completed, started: started)
                       .animate(delay: 100.ms)
+                      .fadeIn(duration: 420.ms)
+                      .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
+                  const SizedBox(height: 12),
+                  _AchievementsTile(
+                    achieved: achieved,
+                    total: achievements.length,
+                    onTap: () => context.push('/achievements'),
+                  )
+                      .animate(delay: 150.ms)
                       .fadeIn(duration: 420.ms)
                       .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
                   const SizedBox(height: 24),
@@ -356,6 +373,49 @@ class _TransportRow extends StatelessWidget {
             style: const TextStyle(
                 fontSize: 13, color: AppColors.textSecondary)),
       ],
+    );
+  }
+}
+
+class _AchievementsTile extends StatelessWidget {
+  const _AchievementsTile(
+      {required this.achieved, required this.total, required this.onTap});
+  final int achieved;
+  final int total;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.line),
+            boxShadow: AppColors.cardShadow,
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.workspace_premium_outlined,
+                  color: AppColors.primaryDark, size: 22),
+              const SizedBox(width: 12),
+              Text('칭호 · 업적', style: AppText.display(size: 15)),
+              const Spacer(),
+              Text('$achieved / $total',
+                  style: AppText.number(
+                      size: 14, color: AppColors.textSecondary)),
+              const SizedBox(width: 6),
+              const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.textTertiary),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -14,6 +14,7 @@ import '../../data/repositories/collection_repository.dart';
 import '../../data/repositories/session_repository.dart';
 import '../complete/last_session_provider.dart';
 import '../journey/journey_selection_provider.dart';
+import 'ambient_sound.dart';
 import 'focus_timer_provider.dart';
 import 'journey_map.dart';
 import 'map_style_provider.dart';
@@ -38,6 +39,30 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
     _startNotification();
+    _maybeStartAmbient();
+  }
+
+  /// 배경음이 켜져 있으면 현재 교통수단 루프를 재생.
+  void _maybeStartAmbient() {
+    if (!ref.read(ambientEnabledProvider)) return;
+    final t = ref.read(journeySelectionProvider).transport;
+    if (t == null) return;
+    final c = ref.read(ambientSoundProvider);
+    c.play(t);
+    if (ref.read(focusTimerProvider)?.isPaused ?? false) c.pause();
+  }
+
+  void _toggleSound() {
+    final on = !ref.read(ambientEnabledProvider);
+    ref.read(ambientEnabledProvider.notifier).state = on;
+    final c = ref.read(ambientSoundProvider);
+    final t = ref.read(journeySelectionProvider).transport;
+    if (on && t != null) {
+      c.play(t);
+      if (ref.read(focusTimerProvider)?.isPaused ?? false) c.pause();
+    } else {
+      c.stop();
+    }
   }
 
   /// 시작=now-경과, 종료=now+남음 → 위젯/알림이 이 구간을 스스로 카운트다운.
@@ -90,6 +115,10 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
     if (t.isPaused == _lastPaused) return;
     _lastPaused = t.isPaused;
     _persistActive(t); // 일시정지/재개 상태도 저장
+    if (ref.read(ambientEnabledProvider)) {
+      final c = ref.read(ambientSoundProvider);
+      t.isPaused ? c.pause() : c.resume();
+    }
     final sel = ref.read(journeySelectionProvider);
     if (!sel.isComplete) return;
     final now = DateTime.now();
@@ -110,6 +139,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
+    ref.read(ambientSoundProvider).stop();
     super.dispose();
   }
 
@@ -154,6 +184,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
           collectibleName: awarded?.name,
         );
     await ref.read(activeJourneyRepositoryProvider).clear();
+    await ref.read(ambientSoundProvider).stop();
     ref.read(focusTimerProvider.notifier).cancel();
     if (mounted) context.go('/complete');
   }
@@ -194,6 +225,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
           ));
     }
     await ref.read(activeJourneyRepositoryProvider).clear();
+    await ref.read(ambientSoundProvider).stop();
     ref.read(focusTimerProvider.notifier).cancel();
     await ref.read(notificationServiceProvider).cancel();
     if (mounted) context.go('/');
@@ -228,6 +260,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
     final remaining = timer.remainingAt(now);
     final progress = timer.progressAt(now);
     final useRealMap = ref.watch(useRealMapProvider);
+    final soundOn = ref.watch(ambientEnabledProvider);
 
     return PopScope(
       canPop: false,
@@ -240,21 +273,36 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
             child: Column(
               children: [
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: () => ref
-                        .read(useRealMapProvider.notifier)
-                        .update((v) => !v),
-                    icon: Icon(
-                        useRealMap
-                            ? Icons.terrain_rounded
-                            : Icons.map_outlined,
-                        size: 18),
-                    label: Text(useRealMap ? '실제 지도' : '감성 지도'),
-                    style: TextButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary),
-                  ),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: _toggleSound,
+                      icon: Icon(
+                          soundOn
+                              ? Icons.volume_up_rounded
+                              : Icons.volume_off_rounded,
+                          size: 18),
+                      label: Text(soundOn ? '배경음 켬' : '배경음'),
+                      style: TextButton.styleFrom(
+                          foregroundColor: soundOn
+                              ? AppColors.primaryDark
+                              : AppColors.textTertiary),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () => ref
+                          .read(useRealMapProvider.notifier)
+                          .update((v) => !v),
+                      icon: Icon(
+                          useRealMap
+                              ? Icons.terrain_rounded
+                              : Icons.map_outlined,
+                          size: 18),
+                      label: Text(useRealMap ? '실제 지도' : '감성 지도'),
+                      style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Row(

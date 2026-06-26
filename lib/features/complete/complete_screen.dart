@@ -13,6 +13,7 @@ import '../../data/models/owned_collectible.dart';
 import '../../data/repositories/session_repository.dart';
 import '../journey/journey_selection_provider.dart';
 import 'last_session_provider.dart';
+import 'share_card.dart';
 
 class CompleteScreen extends ConsumerStatefulWidget {
   const CompleteScreen({super.key});
@@ -70,6 +71,19 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
     final todaySeconds = ref.read(sessionRepositoryProvider).todaySeconds();
     final stampLabel = awarded?.city ?? session.destName;
     final stampDate = DateFormat('yyyy.MM.dd').format(session.startedAt);
+    final shareData = ShareCardData(
+      originName: session.originName,
+      destName: session.destName,
+      destCity: stampLabel,
+      transportIndex: session.transportIndex,
+      durationSeconds: session.focusedSeconds,
+      date: session.startedAt,
+      collectibleEmoji: awarded?.emoji,
+      collectibleName: awarded?.name,
+      collectibleCategory: awarded != null
+          ? CollectibleCategory.values[awarded.categoryIndex].label
+          : null,
+    );
 
     return PopScope(
       canPop: false,
@@ -156,13 +170,21 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: TextButton.icon(
+                          child: TextButton(
                             onPressed: () => context.push('/collection'),
-                            icon: const Icon(Icons.inventory_2_outlined,
-                                size: 18),
                             style: TextButton.styleFrom(
                                 foregroundColor: AppColors.textSecondary),
-                            label: const Text('진열장'),
+                            child: const Text('진열장'),
+                          ),
+                        ),
+                        Expanded(
+                          child: TextButton.icon(
+                            onPressed: () =>
+                                showJourneyShareSheet(context, shareData),
+                            icon: const Icon(Icons.ios_share_rounded, size: 18),
+                            style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primaryDark),
+                            label: const Text('공유'),
                           ),
                         ),
                         Expanded(
@@ -170,7 +192,7 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                             onPressed: _newJourney,
                             style: TextButton.styleFrom(
                                 foregroundColor: AppColors.textSecondary),
-                            child: const Text('새 여정 시작'),
+                            child: const Text('새 여정'),
                           ),
                         ),
                       ],
