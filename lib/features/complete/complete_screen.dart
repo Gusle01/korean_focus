@@ -24,26 +24,45 @@ class CompleteScreen extends ConsumerStatefulWidget {
 
 class _CompleteScreenState extends ConsumerState<CompleteScreen> {
   late final ConfettiController _confetti;
+  final TextEditingController _noteController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _confetti = ConfettiController(duration: const Duration(seconds: 2));
     _confetti.play();
+    _noteController.text = ref.read(lastCompletedSessionProvider)?.note ?? '';
   }
 
   @override
   void dispose() {
+    _noteController.dispose();
     _confetti.dispose();
     super.dispose();
   }
 
+  /// 한 줄 회고를 이번 세션에 저장(빈 값이면 지움).
+  void _saveNote({bool feedback = false}) {
+    final session = ref.read(lastCompletedSessionProvider);
+    if (session == null) return;
+    ref.read(sessionRepositoryProvider).updateNote(session.id, _noteController.text);
+    if (feedback && mounted) {
+      FocusScope.of(context).unfocus();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('회고를 남겼어요'), duration: Duration(seconds: 1)),
+      );
+    }
+  }
+
   void _goHome() {
+    _saveNote();
     ref.read(journeySelectionProvider.notifier).reset();
     context.go('/');
   }
 
   void _newJourney() {
+    _saveNote();
     ref.read(journeySelectionProvider.notifier).reset();
     context.go('/transport');
   }
@@ -149,6 +168,11 @@ class _CompleteScreenState extends ConsumerState<CompleteScreen> {
                                 value: formatDurationKo(todaySeconds))),
                       ],
                     ).animate().fadeIn(delay: 1150.ms, duration: 450.ms),
+                    const SizedBox(height: 18),
+                    _ReflectionField(
+                      controller: _noteController,
+                      onSubmit: () => _saveNote(feedback: true),
+                    ).animate().fadeIn(delay: 1300.ms, duration: 450.ms),
                     const Spacer(),
                     SizedBox(
                       width: double.infinity,
@@ -296,6 +320,61 @@ class _Stat extends StatelessWidget {
         const SizedBox(height: 6),
         Text(value, style: AppText.number(size: 20)),
       ],
+    );
+  }
+}
+
+/// 도착 후 한 줄 회고("뭘 집중했는지") 입력.
+class _ReflectionField extends StatelessWidget {
+  const _ReflectionField({required this.controller, required this.onSubmit});
+  final TextEditingController controller;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
+      padding: const EdgeInsets.only(left: 14, right: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.edit_note_rounded,
+              size: 20, color: AppColors.textTertiary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => onSubmit(),
+              maxLength: 60,
+              buildCounter: (context,
+                      {required currentLength,
+                      required isFocused,
+                      required maxLength}) =>
+                  null,
+              style:
+                  const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: '오늘 무엇에 집중했나요? (한 줄 회고)',
+                hintStyle:
+                    TextStyle(fontSize: 13, color: AppColors.textTertiary),
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: onSubmit,
+            icon: const Icon(Icons.check_rounded,
+                size: 20, color: AppColors.primaryDark),
+            tooltip: '회고 저장',
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
     );
   }
 }

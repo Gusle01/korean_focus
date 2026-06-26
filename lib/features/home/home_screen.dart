@@ -309,6 +309,19 @@ class _RecentTile extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 13, color: AppColors.textSecondary),
                 ),
+                if (session.note?.trim().isNotEmpty ?? false) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    '“${session.note!.trim()}”',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 12.5,
+                        height: 1.3,
+                        fontStyle: FontStyle.italic,
+                        color: AppColors.textTertiary),
+                  ),
+                ],
               ],
             ),
           ),

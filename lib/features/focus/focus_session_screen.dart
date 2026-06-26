@@ -6,6 +6,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text.dart';
+import '../../core/ui/pressable.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/focus_session.dart';
 import '../../data/models/transport_type.dart';
@@ -39,30 +40,38 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
     _startNotification();
-    _maybeStartAmbient();
+    _applyAmbient();
   }
 
-  /// 배경음이 켜져 있으면 현재 교통수단 루프를 재생.
-  void _maybeStartAmbient() {
-    if (!ref.read(ambientEnabledProvider)) return;
+  /// 켜져 있으면 현재 설정(레이어/볼륨)대로 믹스를 재생, 아니면 정지.
+  void _applyAmbient() {
+    final mixer = ref.read(ambientSoundProvider);
     final t = ref.read(journeySelectionProvider).transport;
-    if (t == null) return;
-    final c = ref.read(ambientSoundProvider);
-    c.play(t);
-    if (ref.read(focusTimerProvider)?.isPaused ?? false) c.pause();
-  }
-
-  void _toggleSound() {
-    final on = !ref.read(ambientEnabledProvider);
-    ref.read(ambientEnabledProvider.notifier).state = on;
-    final c = ref.read(ambientSoundProvider);
-    final t = ref.read(journeySelectionProvider).transport;
-    if (on && t != null) {
-      c.play(t);
-      if (ref.read(focusTimerProvider)?.isPaused ?? false) c.pause();
-    } else {
-      c.stop();
+    if (!ref.read(ambientEnabledProvider) || t == null) {
+      mixer.stop();
+      return;
     }
+    mixer.apply(
+      transport: t,
+      active: ref.read(ambientLayersProvider),
+      volume: ref.read(ambientVolumeProvider),
+      paused: ref.read(focusTimerProvider)?.isPaused ?? false,
+    );
+  }
+
+  /// 배경음 믹서 시트(마스터 on/off · 볼륨 · 레이어).
+  void _openSoundSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _SoundSheet(
+        onApply: _applyAmbient,
+        onVolumeLive: (v) => ref.read(ambientSoundProvider).setVolume(v),
+      ),
+    );
   }
 
   /// 시작=now-경과, 종료=now+남음 → 위젯/알림이 이 구간을 스스로 카운트다운.
@@ -276,7 +285,7 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
                 Row(
                   children: [
                     TextButton.icon(
-                      onPressed: _toggleSound,
+                      onPressed: _openSoundSheet,
                       icon: Icon(
                           soundOn
                               ? Icons.volume_up_rounded
@@ -414,6 +423,154 @@ class _FocusSessionScreenState extends ConsumerState<FocusSessionScreen>
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 배경음 믹서 바텀시트 — 마스터 on/off · 볼륨 슬라이더 · 레이어 토글(겹쳐 믹스).
+class _SoundSheet extends ConsumerWidget {
+  const _SoundSheet({required this.onApply, required this.onVolumeLive});
+  final VoidCallback onApply;
+  final ValueChanged<double> onVolumeLive;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(ambientEnabledProvider);
+    final volume = ref.watch(ambientVolumeProvider);
+    final layers = ref.watch(ambientLayersProvider);
+    final bottom = MediaQuery.of(context).viewPadding.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 14, 20, 20 + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.line2,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Text('배경음', style: AppText.display(size: 18)),
+              const Spacer(),
+              Switch(
+                value: enabled,
+                activeThumbColor: AppColors.primary,
+                onChanged: (v) {
+                  ref.read(ambientEnabledProvider.notifier).state = v;
+                  onApply();
+                },
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              const Icon(Icons.volume_up_rounded,
+                  size: 20, color: AppColors.textSecondary),
+              Expanded(
+                child: Slider(
+                  value: volume,
+                  activeColor: AppColors.primary,
+                  onChanged: (v) {
+                    ref.read(ambientVolumeProvider.notifier).state = v;
+                    onVolumeLive(v);
+                  },
+                  onChangeEnd: (v) =>
+                      persistAmbientSettings(v, ref.read(ambientLayersProvider)),
+                ),
+              ),
+              SizedBox(
+                width: 34,
+                child: Text('${(volume * 100).round()}',
+                    textAlign: TextAlign.end,
+                    style: AppText.number(
+                        size: 13, color: AppColors.textSecondary)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text('레이어 (겹쳐 믹스)', style: AppText.label(size: 12)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final l in AmbientLayer.values)
+                _LayerChip(
+                  layer: l,
+                  selected: layers.contains(l),
+                  onTap: () {
+                    final next = {...ref.read(ambientLayersProvider)};
+                    next.contains(l) ? next.remove(l) : next.add(l);
+                    ref.read(ambientLayersProvider.notifier).state = next;
+                    persistAmbientSettings(
+                        ref.read(ambientVolumeProvider), next);
+                    onApply();
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
+}
+
+class _LayerChip extends StatelessWidget {
+  const _LayerChip(
+      {required this.layer, required this.selected, required this.onTap});
+  final AmbientLayer layer;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      scale: 0.96,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.10)
+              : AppColors.background,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected
+                ? AppColors.primary.withValues(alpha: 0.5)
+                : AppColors.line,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(layer.emoji, style: const TextStyle(fontSize: 16)),
+            const SizedBox(width: 8),
+            Text(
+              layer.label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color:
+                    selected ? AppColors.primaryDark : AppColors.textSecondary,
+              ),
+            ),
+            if (selected) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.check_rounded,
+                  size: 15, color: AppColors.primaryDark),
+            ],
+          ],
         ),
       ),
     );

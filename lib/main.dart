@@ -10,6 +10,7 @@ import 'data/models/owned_collectible.dart';
 import 'data/repositories/active_journey_repository.dart';
 import 'data/repositories/collection_repository.dart';
 import 'data/repositories/session_repository.dart';
+import 'features/focus/ambient_sound.dart';
 
 void main() {
   runZonedGuarded<Future<void>>(() async {
@@ -21,6 +22,7 @@ void main() {
       await Hive.openBox<FocusSession>(sessionsBoxName);
       await Hive.openBox<OwnedCollectible>(collectiblesBoxName);
       await Hive.openBox(activeJourneyBoxName);
+      await Hive.openBox(ambientSettingsBoxName); // 배경음 볼륨/레이어 설정
     } catch (e, st) {
       runApp(StartupErrorApp(error: e.toString(), stack: st.toString()));
       return;

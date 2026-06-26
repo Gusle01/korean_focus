@@ -87,6 +87,15 @@ class SessionRepository {
 
   Future<void> save(FocusSession session) => _box.put(session.id, session);
 
+  /// 한 줄 회고 저장/수정(빈 값이면 지움). 기존 세션이 없으면 무시.
+  Future<void> updateNote(String id, String? note) async {
+    final s = _box.get(id);
+    if (s == null) return;
+    final trimmed = note?.trim();
+    final empty = trimmed == null || trimmed.isEmpty;
+    await _box.put(id, s.copyWith(note: empty ? null : trimmed, clearNote: empty));
+  }
+
   List<FocusSession> all() {
     final list = _box.values.toList();
     list.sort((a, b) => b.startedAt.compareTo(a.startedAt));
