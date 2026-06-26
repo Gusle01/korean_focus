@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text.dart';
+import '../../core/ui/pressable.dart';
 import '../../core/ui/ticket_card.dart';
 import '../../core/utils/duration_format.dart';
 import '../../data/models/focus_session.dart';
@@ -27,29 +29,46 @@ class HomeScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
           children: [
-            Text(
-              '오늘도 좋은 여정 되세요',
-              style: AppText.display(size: 20),
-            ),
+            Text('오늘도 좋은 여정 되세요', style: AppText.display(size: 20))
+                .animate()
+                .fadeIn(duration: 420.ms)
+                .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
             const SizedBox(height: 16),
-            _TodayCard(seconds: todaySeconds),
+            _TodayCard(seconds: todaySeconds)
+                .animate(delay: 80.ms)
+                .fadeIn(duration: 420.ms)
+                .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
             const SizedBox(height: 24),
             _StartButton(onTap: () {
               ref.read(journeySelectionProvider.notifier).reset();
               context.push('/transport');
-            }),
+            })
+                .animate(delay: 160.ms)
+                .fadeIn(duration: 420.ms)
+                .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
             const SizedBox(height: 12),
             _CollectionTile(
               count: collectionCount,
               onTap: () => context.push('/collection'),
-            ),
+            )
+                .animate(delay: 240.ms)
+                .fadeIn(duration: 420.ms)
+                .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
             const SizedBox(height: 32),
-            Text('최근 여정', style: AppText.display(size: 16)),
+            Text('최근 여정', style: AppText.display(size: 16))
+                .animate(delay: 320.ms)
+                .fadeIn(duration: 420.ms)
+                .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
             const SizedBox(height: 12),
             if (recent.isEmpty)
               const _EmptyRecent()
+                  .animate(delay: 380.ms)
+                  .fadeIn(duration: 420.ms)
             else
-              ...recent.map((s) => _RecentTile(session: s)),
+              ...recent.indexed.map((e) => _RecentTile(session: e.$2)
+                  .animate(delay: (380 + e.$1 * 70).ms)
+                  .fadeIn(duration: 420.ms)
+                  .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic)),
           ],
         ),
       ),
@@ -94,9 +113,8 @@ class _StartButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const cream = Color(0xFFFFF7E9);
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
       child: TicketCard(
         color: AppColors.primary,
         borderColor: const Color(0x55FFF7E9),

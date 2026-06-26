@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -35,10 +36,17 @@ class DisplayCaseScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
                 children: [
                   _ProgressCard(
-                      owned: repo.count, distinct: distinct, total: total),
+                          owned: repo.count, distinct: distinct, total: total)
+                      .animate()
+                      .fadeIn(duration: 420.ms)
+                      .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
                   const SizedBox(height: 24),
-                  for (final city in cities) ...[
-                    _CitySection(city: city, items: byCity[city]!),
+                  for (final (i, city) in cities.indexed) ...[
+                    _CitySection(city: city, items: byCity[city]!)
+                        .animate(delay: (120 + i * 90).ms)
+                        .fadeIn(duration: 420.ms)
+                        .slideY(
+                            begin: 0.12, end: 0, curve: Curves.easeOutCubic),
                     const SizedBox(height: 24),
                   ],
                 ],
